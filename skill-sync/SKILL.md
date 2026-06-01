@@ -1,6 +1,6 @@
 ---
 name: skill-sync
-description: Sync personal Cursor skills between ~/.cursor/skills and GitHub (Zantares/skills). Use when the user says "更新skill" to pull remote into local, or "提交skill" to commit and push local changes. Also trigger on "同步skill", "拉取skill", "推送skill", "推送skill到github". On conflicts, explain options to the user and never auto-merge.
+description: Sync personal Cursor skills between ~/.cursor/skills and GitHub (Zantares/skills). Pull when the user says "更新skill" or "pull skill" (also 同步skill, 拉取skill). Commit and push when the user says "提交skill" or "commit skill" (also 推送skill, 推送skill到github). On conflicts, explain options to the user and never auto-merge.
 ---
 
 # Skill Sync
@@ -13,10 +13,10 @@ Default remote (if `origin` is unset): `git@github.com:Zantares/skills.git`
 
 | User says | Action |
 |-----------|--------|
-| **更新skill** | Pull remote → local (`git pull`) |
-| **提交skill** | Commit + push local → remote |
-| 同步skill / 拉取skill | Same as 更新skill |
-| 推送skill / 推送skill到github | Same as 提交skill |
+| **更新skill** / **pull skill** | Pull remote → local (`git pull`) |
+| **提交skill** / **commit skill** | Commit + push local → remote |
+| 同步skill / 拉取skill | Same as 更新skill / pull skill |
+| 推送skill / 推送skill到github | Same as 提交skill / commit skill |
 
 Apply this skill only when the user explicitly uses one of these phrases (or an obvious synonym). Do not run sync on unrelated requests.
 
@@ -30,7 +30,7 @@ Before any git command, verify:
 
 If any precondition fails, report what is missing and stop. Do not guess credentials.
 
-## Mode A — 更新skill (pull)
+## Mode A — 更新skill / pull skill (pull)
 
 Run in order:
 
@@ -54,12 +54,12 @@ Typical failure cases to explain:
 
 | Situation | What to tell the user |
 |-----------|------------------------|
-| Local uncommitted changes block pull | Commit or stash first; offer 提交skill if they want to keep local work |
+| Local uncommitted changes block pull | Commit or stash first; offer 提交skill / commit skill if they want to keep local work |
 | Non-fast-forward (local and remote diverged) | Show `git log --oneline -3` for both sides; ask whether to commit local first, reset to remote, or merge manually themselves |
 | Merge conflicts after accidental non-ff pull | Show `git status`; ask them to resolve in editor or choose abort (`git merge --abort` / `git rebase --abort`) |
 | Auth / network errors | Check SSH key, `git remote -v`, GitHub access |
 
-## Mode B — 提交skill (commit + push)
+## Mode B — 提交skill / commit skill (commit + push)
 
 1. Inspect changes:
 
@@ -70,7 +70,7 @@ git -C ~/.cursor/skills diff
 
 2. Stage all skill changes under the repo (respect `.gitignore`). Do not add `~/.cursor/skills-cursor/` or paths outside this repo.
 
-3. If there is nothing to commit, say so and stop (optionally offer 更新skill if they expected remote changes).
+3. If there is nothing to commit, say so and stop (optionally offer 更新skill / pull skill if they expected remote changes).
 
 4. Commit with a short message describing the skill changes (e.g. `Add skill-sync`, `Update structured-dev-flow`). Use HEREDOC for the message if needed.
 
@@ -85,11 +85,11 @@ git -C ~/.cursor/skills push origin main
 **On failure — stop and discuss. Do NOT:**
 
 - Force-push (`git push --force`) unless the user explicitly requests it after understanding risk
-- Auto-merge remote changes; if push is rejected (non-fast-forward), explain that 更新skill may be needed first and ask how to proceed
+- Auto-merge remote changes; if push is rejected (non-fast-forward), explain that 更新skill / pull skill may be needed first and ask how to proceed
 
 | Situation | What to tell the user |
 |-----------|------------------------|
-| Push rejected (remote ahead) | Run 更新skill first, or inspect divergence together |
+| Push rejected (remote ahead) | Run 更新skill / pull skill first, or inspect divergence together |
 | Nothing to commit | Working tree clean |
 | Auth failure | Fix SSH / GitHub login |
 
@@ -97,7 +97,7 @@ git -C ~/.cursor/skills push origin main
 
 After either mode, use a brief report:
 
-- **Action:** 更新skill / 提交skill
+- **Action:** 更新skill / pull skill / 提交skill / commit skill
 - **Result:** success / blocked
 - **Details:** commit range, files touched, or error message
 - **Next step:** only if blocked or user may want the other command

@@ -1,29 +1,29 @@
 # Cursor Personal Skills
 
-这个仓库用于同步个人 Cursor Skills，目录与 Cursor 默认约定保持一致。
+This repository syncs personal Cursor Skills. The layout matches Cursor’s default conventions.
 
-## 目录结构
+## Layout
 
-- `*/SKILL.md`：每个 skill 的主定义文件
-- 每个子目录代表一个独立 skill
+- `*/SKILL.md` — main definition file for each skill
+- Each subdirectory is one independent skill
 
-## 在本机使用
+## Local setup
 
-将仓库内容放在：
+Place the repository at:
 
 - `~/.cursor/skills/`
 
-Cursor 会自动发现该目录下的 skills。
+Cursor discovers skills under that directory automatically.
 
-## 跨机器同步
+## Cross-machine sync
 
-在任意机器上执行：
+On any machine, pull the latest skills:
 
 ```bash
 git -C ~/.cursor/skills pull
 ```
 
-修改 skill 后提交并推送：
+After editing skills, commit and push:
 
 ```bash
 git -C ~/.cursor/skills add .
@@ -31,17 +31,17 @@ git -C ~/.cursor/skills commit -m "update skills"
 git -C ~/.cursor/skills push
 ```
 
-## Agent 口令（skill-sync）
+## Agent commands (`skill-sync`)
 
-在 Cursor 对话中可直接说：
+In a Cursor chat you can say:
 
-| 口令 | 作用 |
-|------|------|
-| **更新skill** | 从 GitHub 拉取到本机 `~/.cursor/skills/` |
-| **提交skill** | 将本机 skill 变更提交并推送到远程 |
+| Command | Action |
+|---------|--------|
+| **更新skill** / **pull skill** | Pull from GitHub into `~/.cursor/skills/` |
+| **提交skill** / **commit skill** | Commit and push local skill changes to the remote |
 
-由 `skill-sync` skill 指导 Agent 执行；若发生冲突，Agent 会说明情况并与你讨论，不会自动合并。
+The `skill-sync` skill guides the agent through these steps. On conflicts, the agent explains the situation and discusses options with you; it does not auto-merge.
 
-## 建议
+## Notes
 
-- 不要把内置目录 `~/.cursor/skills-cursor/` 的内容混入本仓库
+- Do not mix in content from the built-in directory `~/.cursor/skills-cursor/`
