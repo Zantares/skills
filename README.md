@@ -33,5 +33,4 @@ git -C ~/.cursor/skills push
 
 ## 建议
 
-- 推荐将仓库设置为私有（private）
 - 不要把内置目录 `~/.cursor/skills-cursor/` 的内容混入本仓库
