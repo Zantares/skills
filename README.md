@@ -31,6 +31,17 @@ git -C ~/.cursor/skills commit -m "update skills"
 git -C ~/.cursor/skills push
 ```
 
+## Agent 口令（skill-sync）
+
+在 Cursor 对话中可直接说：
+
+| 口令 | 作用 |
+|------|------|
+| **更新skill** | 从 GitHub 拉取到本机 `~/.cursor/skills/` |
+| **提交skill** | 将本机 skill 变更提交并推送到远程 |
+
+由 `skill-sync` skill 指导 Agent 执行；若发生冲突，Agent 会说明情况并与你讨论，不会自动合并。
+
 ## 建议
 
 - 不要把内置目录 `~/.cursor/skills-cursor/` 的内容混入本仓库
