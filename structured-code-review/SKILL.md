@@ -1,11 +1,39 @@
 ---
 name: structured-code-review
-description: Structured code review with two entry modes—(1) MLIR pass / runOnOperation walkthrough, or (2) git commit diff review. Both modes summarize changes, check logic/flow, and common bugs. Use for 代码检视, pass review, commit review, or maintainer-style review.
+description: Structured code review with two entry modes—(1) MLIR pass / runOnOperation walkthrough, or (2) git commit diff review. Both modes summarize changes, check logic/flow, and common bugs. Maintainer role outputs review comments only—does not fix code unless the user explicitly asks. Use for 代码检视, pass review, commit review, or maintainer-style review.
 ---
 
 # Structured Code Review
 
 固定方法论的结构化代码检视。先根据**启动方式**选择流程，再执行对应检视路径；两种路径在**总结修改内容、逻辑/流程检查、通用错误检查**上的要求一致。
+
+## Maintainer 角色边界（默认遵守）
+
+以**代码检视 maintainer** 身份工作时，职责是**产出检视意见供作者修复**，而非代为改代码。
+
+### 必须做
+
+- **阅读与分析**：读 diff、实现、pipeline 注册、相关 pass/工具代码；必要时用 git / grep 取证。
+- **输出检视意见**：问题列表含位置、严重性、问题描述、**修复建议**（说明作者应如何改，可附示例片段，但标明「建议」）。
+- **建议验证**：给出作者可自行执行的 `lit` / `epu_cli` / 构建命令。
+- **持久化（按需）**：用户要求时，可将检视结论写入 `*_REVIEW.md`，仍属检视产物，不是改源码。
+
+### 禁止做（除非用户明确要求修复 / 实现）
+
+- **不要**修改被检视的源码（`.cc` / `.h` / `BUILD` / 测试 MLIR 等）。
+- **不要**主动提交 commit、开 PR、或「顺手修一下」。
+- **不要**在文末提议「我可以直接提交修复 patch」——默认应假定由**原作者**根据 `#n` 条目修复。
+
+### 用户意图切换
+
+| 用户表述 | 行为 |
+|----------|------|
+| 代码检视 / maintainer review / 检视 commit / 检视 pass | 仅输出检视意见 |
+| 帮我修 / 直接改 / 提交修复 / 实现建议 | 方可进入实现模式，且仅做用户授权的范围 |
+
+### 修复建议字段的含义
+
+问题列表中的 **修复建议** = 给作者的 action item（改什么、改哪、参考哪段既有实现），**不是** agent 自己的待办。语气用「建议作者…」「应…」「可考虑…」，避免「我来…」。
 
 ## Mode Selection（必须先做）
 
@@ -76,6 +104,7 @@ description: Structured code review with two entry modes—(1) MLIR pass / runOn
 - [ ] 已从 `runOnOperation` 分阶段梳理
 - [ ] 已执行 Common Checks
 - [ ] 问题含全局序号、位置、严重性、修复建议
+- [ ] 未擅自修改源码（除非用户明确要求实现修复）
 
 ---
 
@@ -191,6 +220,7 @@ git show <commit> -p
 - [ ] 已执行 Common Checks
 - [ ] 已给出可运行的验证建议（若仓库可访问）
 - [ ] 问题列表含全局连续序号 `#n`
+- [ ] 未擅自修改源码（除非用户明确要求实现修复）
 
 ---
 
@@ -241,6 +271,12 @@ git show <commit> -p
 - 「代码检视 / maintainer review」
 - 「总结修改 + 查逻辑错误和内存问题」
 
+**仅检视、不修复（默认）**
+
+- 「作为 maintainer 检视…」
+- 「生成检视意见让他人修复」
+- 「不要修代码，只列问题」
+
 ---
 
 ## Tooling Notes
@@ -249,3 +285,4 @@ git show <commit> -p
 - Pass 模式：大文件用 `offset/limit` 或 `Grep` 定位 `runOnOperation`、`TypeSwitch`、关键 helper。
 - 输出语言：遵循用户规则（默认**简体中文**），技术标识符保持英文。
 - 代码引用：使用 `` `startLine:endLine:path` `` 格式便于跳转。
+- Maintainer 默认**只读**仓库；检视结论通过对话或 `*_REVIEW.md` 交付，不改动作者分支上的实现文件。
