@@ -6,7 +6,8 @@ This repository syncs personal Cursor Skills and user-level Rules. The layout ma
 
 - `*/SKILL.md` — main definition file for each skill
 - Each subdirectory (except `rules/`) is one independent skill
-- `rules/*.mdc` — user rules tracked in git; deployed to `~/.cursor/rules/` on pull
+- `rules/*.mdc` — user rules tracked in git; safely deployed to `~/.cursor/rules/` on pull
+- `rules/.baseline/*.mdc` — snapshot of last successful deploy (detects live edits)
 
 ```
 ~/.cursor/
@@ -22,12 +23,7 @@ Place the repository at:
 
 - `~/.cursor/skills/`
 
-Deploy rules once after clone or pull:
-
-```bash
-mkdir -p ~/.cursor/rules
-cp -f ~/.cursor/skills/rules/*.mdc ~/.cursor/rules/
-```
+After clone or pull, use **更新skill** in Cursor chat for safe deploy (or copy only new files manually). Deploy will not overwrite `~/.cursor/rules/` when live was edited since the last deploy.
 
 Cursor discovers skills under `~/.cursor/skills/` and rules under `~/.cursor/rules/` automatically.
 
@@ -36,8 +32,9 @@ Cursor discovers skills under `~/.cursor/skills/` and rules under `~/.cursor/rul
 On any machine, pull the latest skills and rules:
 
 ```bash
-git -C ~/.cursor/skills pull
-cp -f ~/.cursor/skills/rules/*.mdc ~/.cursor/rules/
+# In Cursor chat: 更新skill / 同步skill
+git -C ~/.cursor/skills pull --ff-only
+# Agent runs safe deploy per skill-sync (not blind cp)
 ```
 
 After editing skills or rules locally, commit and push:
@@ -55,13 +52,15 @@ In a Cursor chat you can say:
 
 | Command | Action |
 |---------|--------|
-| **更新skill** / **pull skill** | Pull from GitHub; copy `skills/rules/` → `~/.cursor/rules/` |
-| **提交skill** / **commit skill** | Diff rules, copy `~/.cursor/rules/` → `skills/rules/` if needed; commit and push |
-| **检查rule** / **check rules** | Diff repo rules vs live rules only (no git) |
+| **更新skill** / **pull skill** | Pull from GitHub; safe deploy `skills/rules/` → `~/.cursor/rules/` |
+| **提交skill** / **commit skill** | Diff rules, collect live → repo if needed; commit and push |
+| **检查rule** / **check rules** | Diff repo vs live vs baseline (no git) |
+| **强制部署rule** / **force deploy rules** | Overwrite live from repo after you merged or accept repo version |
 
-The `skill-sync` skill guides the agent through these steps. On conflicts, the agent explains the situation and discusses options with you; it does not auto-merge.
+The `skill-sync` skill guides the agent. Live rules edited since last deploy are not overwritten silently; use diff, merge, then **提交skill** or **强制部署rule**.
 
 ## Notes
 
 - Do not mix in content from the built-in directory `~/.cursor/skills-cursor/`
 - Deploy does not remove extra `.mdc` files that exist only under `~/.cursor/rules/`
+- Baseline duplicates each rule under `rules/.baseline/` to detect local edits (x2 storage tradeoff)

@@ -1,0 +1,17 @@
+---
+description: Agent workflow constraints — no speculative fixes, confirm before heavy operations
+alwaysApply: true
+---
+
+# Agent Workflow Constraints
+
+## Root-cause first, no speculative fixes
+
+- Do not loosen checks, add fallbacks, or broaden accepted conditions to mask an error when the root cause is unclear.
+- If unsure, stop and discuss with the user before changing behavior.
+- Prefer failing fast with a clear diagnosis over silently allowing unknown conditions to pass.
+
+## Confirm before resource-heavy operations
+
+- Before starting builds, long test runs, large downloads, or other time/resource-intensive actions, ask the user for confirmation first.
+- Do not start such operations on your own initiative without explicit approval.
