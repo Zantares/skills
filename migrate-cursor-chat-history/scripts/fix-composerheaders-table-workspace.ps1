@@ -8,6 +8,9 @@
 #   UPDATE composerHeaders SET workspaceId = NEW
 #   WHERE workspaceId = OLD
 # Optionally patches value JSON workspaceIdentifier if present.
+# uri.authority / remoteAuthority MUST stay "ssh-remote+<hex>" (literal plus).
+# uri.external / folder URI keep "ssh-remote%2B<hex>".
+# Writing %2B into authority breaks the NEXT Cursor start (host label ssh-remote..., SSH fails).
 # Does NOT mass-replace cursorDiskKV / bubble bodies.
 #
 # Pair:
@@ -280,7 +283,8 @@ Out 'This will:'
 Out "  1) Backup state.vscdb (+ wal/shm if any) to Desktop"
 Out "  2) UPDATE composerHeaders SET workspaceId=NEW WHERE workspaceId=OLD  ($nOld rows)"
 Out '  3) If value JSON contains workspaceIdentifier with OLD id/path, patch those fields to NEW'
-Out '  4) Clear wal/shm after write'
+Out '     uri.authority uses ssh-remote+HEX; uri.external keeps ssh-remote%2BHEX'
+Out '  4) Checkpoint WAL, then clear wal/shm'
 Out 'It will NOT touch bubble bodies / mass string replace.'
 Write-Host 'Continue? [Y/N]' -ForegroundColor Yellow
 $ans = Read-Host
@@ -303,8 +307,13 @@ try {
   # Patch value JSON workspaceIdentifier if present (now all under NEW)
   $rows = [WinSqlite3Fix]::LoadValuesForWorkspace($db, $NewId)
   $patched = 0
-  $newUri = "vscode-remote://$EncodedAuthority$NewPath"
-  $newAuth = $EncodedAuthority
+  # Folder URI keeps %2B. Parsed authority uses a literal '+'.
+  $parsedAuth = $EncodedAuthority.Replace('%252B','+').Replace('%2B','+')
+  if ($parsedAuth -notlike 'ssh-remote+*') { throw "EncodedAuthority must be ssh-remote+HEX or ssh-remote%2BHEX" }
+  $hexAuth = $parsedAuth.Substring('ssh-remote+'.Length)
+  $encodedForUri = 'ssh-remote%2B' + $hexAuth
+  $newUri = "vscode-remote://$encodedForUri$NewPath"
+  $newAuth = $parsedAuth
   foreach ($row in $rows) {
     if ([string]::IsNullOrEmpty($row.value)) { continue }
     if ($row.value -notmatch 'workspaceIdentifier' -and $row.value -notlike "*$OldId*" -and $row.value -notlike "*$OldPath*") {
@@ -346,6 +355,8 @@ try {
       $json = $json.Replace($OldId, $NewId).Replace($OldPath, $NewPath).Replace($oldFs, $newFs)
       $dirty = $true
     }
+    $jsonFixed = [regex]::Replace($json, '(\"(?:remoteAuthority|authority)\"\s*:\s*\")ssh-remote%(?:25)?2B', '${1}ssh-remote+')
+    if ($jsonFixed -ne $json) { $dirty = $true; $json = $jsonFixed }
     if ($dirty) {
       [WinSqlite3Fix]::UpdateValue($db, $row.composerId, $json)
       $patched++
@@ -354,6 +365,7 @@ try {
   Out ("Patched value JSON rows: $patched")
 
   [WinSqlite3Fix]::Exec($db, 'COMMIT')
+  [WinSqlite3Fix]::Exec($db, 'PRAGMA wal_checkpoint(TRUNCATE)')
 
   $nOld2 = [WinSqlite3Fix]::CountWhere($db, 'SELECT COUNT(*) FROM composerHeaders WHERE workspaceId=?', $OldId, $null)
   $nNew2 = [WinSqlite3Fix]::CountWhere($db, 'SELECT COUNT(*) FROM composerHeaders WHERE workspaceId=?', $NewId, $null)
