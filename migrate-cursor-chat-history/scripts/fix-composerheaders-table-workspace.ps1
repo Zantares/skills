@@ -1,21 +1,9 @@
 ﻿# =============================================================================
-# ROOT CAUSE FIX: Cursor History/@ reads SQLite table `composerHeaders`
-# (composer.composerHeaders.tableGateEnabled=true, migratedToTable=1).
-# Previous scripts only rewrote ItemTable JSON key composer.composerHeaders,
-# which the UI no longer uses as the primary index.
-#
-# This script ONLY:
-#   UPDATE composerHeaders SET workspaceId = NEW
-#   WHERE workspaceId = OLD
-# Optionally patches value JSON workspaceIdentifier if present.
-# uri.authority / remoteAuthority MUST stay "ssh-remote+<hex>" (literal plus).
-# uri.external / folder URI keep "ssh-remote%2B<hex>".
-# Writing %2B into authority breaks the NEXT Cursor start (host label ssh-remote..., SSH fails).
-# Does NOT mass-replace cursorDiskKV / bubble bodies.
-#
-# Pair:
-#   OLD: fcb79932691a7c545711254f250a7d1e  (mlc09 /home/luteng)
-#   NEW: 5922db438f27b34d5a63fe374333a8f5  (mlc09 /home/teng.lu)
+# Rebind History/@ index: UPDATE composerHeaders.workspaceId OLD -> NEW
+# (tableGateEnabled / migratedToTable). Optionally patch value JSON.
+# uri.authority / remoteAuthority = "ssh-remote+<hex>" (literal +).
+# uri.external / folder URI = "ssh-remote%2B<hex>".
+# Does not mass-replace cursorDiskKV / bubble bodies.
 #
 # Usage (Cursor FULLY quit):
 #   powershell -ExecutionPolicy Bypass -File .\fix-composerheaders-table-workspace.ps1 -OldId <OLD> -NewId <NEW>
@@ -23,14 +11,28 @@
 
 param(
   [Parameter(Mandatory=$true)][string]$OldId,
-  [Parameter(Mandatory=$true)][string]$NewId,
-  [string]$NewPath = '/home/teng.lu',
-  [string]$OldPath = '/home/luteng',
-  [string]$EncodedAuthority = 'ssh-remote%2B7b22686f73744e616d65223a226d6c633039227d',
-  [string[]]$GoldIds = @()
+  [Parameter(Mandatory=$true)][string]$NewId
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Get-WorkspaceFolderUri([string]$workspaceId) {
+  $wj = Join-Path $env:APPDATA "Cursor\User\workspaceStorage\$workspaceId\workspace.json"
+  if (-not (Test-Path $wj)) { throw "Missing workspace.json for $workspaceId" }
+  $obj = Get-Content $wj -Raw | ConvertFrom-Json
+  if (-not $obj.folder) { throw "No folder URI in $wj" }
+  return [string]$obj.folder
+}
+
+function Split-RemoteFolderUri([string]$folderUri) {
+  # vscode-remote://ssh-remote%2BHEX/path  OR  ssh-remote+HEX in other forms
+  if ($folderUri -notmatch '^vscode-remote://(ssh-remote(?:%2B|%252B|\+)[0-9a-fA-F]+)(/.*)$') {
+    throw "Unrecognized folder URI: $folderUri"
+  }
+  $encAuth = $Matches[1] -replace '\+','%2B' -replace '%252B','%2B'
+  if ($encAuth -notlike 'ssh-remote%2B*') { throw "Authority not ssh-remote%2Bhex: $encAuth" }
+  return @{ EncodedAuthority = $encAuth; Path = $Matches[2] }
+}
 
 $sqliteCode = @'
 using System;
@@ -241,6 +243,20 @@ if ($procs.Count -gt 0) {
 }
 if (-not (Test-Path $GlobalDb)) { throw "Missing $GlobalDb" }
 
+$oldFolder = Get-WorkspaceFolderUri $OldId
+$newFolder = Get-WorkspaceFolderUri $NewId
+$oldParts = Split-RemoteFolderUri $oldFolder
+$newParts = Split-RemoteFolderUri $newFolder
+$OldPath = $oldParts.Path
+$NewPath = $newParts.Path
+$EncodedAuthority = $newParts.EncodedAuthority
+if ($oldParts.EncodedAuthority -ne $newParts.EncodedAuthority) {
+  throw ("Host mismatch: OLD auth={0} NEW auth={1}. Pair the same SSH host only." -f $oldParts.EncodedAuthority, $newParts.EncodedAuthority)
+}
+Out ("OLD folder=$oldFolder")
+Out ("NEW folder=$newFolder")
+Out ("authority=%2B form=$EncodedAuthority  path OLD=$OldPath NEW=$NewPath")
+
 # preview read-only
 $db = [WinSqlite3Fix]::Open($GlobalDb, $true)
 try {
@@ -256,12 +272,6 @@ try {
   Out ("composerHeaders total=$nAll")
   Out ("  workspaceId=OLD: $nOld (active/non-archived=$nOldActive)")
   Out ("  workspaceId=NEW: $nNew")
-
-  foreach ($gid in $GoldIds) {
-    $ws = [WinSqlite3Fix]::GetWorkspaceOf($db, $gid)
-    if ($null -eq $ws) { Out ("  gold $gid : NOT in composerHeaders table") }
-    else { Out ("  gold $gid : workspaceId=$ws") }
-  }
 
   Out 'Sample OLD rows (by recency):'
   foreach ($s in [WinSqlite3Fix]::SampleRows($db, $OldId, 8)) { Out "  $s" }
@@ -372,10 +382,6 @@ try {
   Out '==== POST ===='
   Out ("  workspaceId=OLD: $nOld2")
   Out ("  workspaceId=NEW: $nNew2")
-  foreach ($gid in $GoldIds) {
-    $ws = [WinSqlite3Fix]::GetWorkspaceOf($db, $gid)
-    Out ("  gold $gid : workspaceId=$ws")
-  }
 }
 catch {
   try { [WinSqlite3Fix]::Exec($db, 'ROLLBACK') } catch {}

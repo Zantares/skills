@@ -48,5 +48,5 @@ if (Test-Path $storageJson) {
 }
 
 Write-Host ''
-Write-Host 'Pair OLD/NEW by same ssh-remote host + old/new path, then run diagnose/fix scripts with those ids.'
+Write-Host 'Pair OLD/NEW by same ssh-remote host + old/new path, then run fix-composerheaders-table-workspace.ps1 -OldId <OLD> -NewId <NEW>.'
 Read-Host 'Press Enter to continue'
